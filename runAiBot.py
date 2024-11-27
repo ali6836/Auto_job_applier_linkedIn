@@ -255,12 +255,12 @@ def get_job_main_details(job: WebElement, blacklisted_companies: set, rejected_j
     * work_style: Work style of this job (Remote, On-site, Hybrid)
     * skip: A boolean flag to skip this job
     '''
-    job_details_button = job.find_element(By.CLASS_NAME, "job-card-list__title")
+    job_details_button = job.find_element(By.CLASS_NAME, "artdeco-entity-lockup__title")
     scroll_to_view(driver, job_details_button, True)
     title = job_details_button.text
-    company = job.find_element(By.CLASS_NAME, "job-card-container__primary-description").text
+    company = job.find_element(By.CLASS_NAME, "artdeco-entity-lockup__subtitle").text
     job_id = job.get_dom_attribute('data-occludable-job-id')
-    work_location = job.find_element(By.CLASS_NAME, "job-card-container__metadata-item").text
+    work_location = job.find_element(By.CLASS_NAME, "job-card-container__metadata-wrapper").text
     work_style = work_location[work_location.rfind('(')+1:work_location.rfind(')')]
     work_location = work_location[:work_location.rfind('(')].strip()
     # Skip if previously rejected due to blacklist or already applied
@@ -682,13 +682,16 @@ def apply_to_jobs(search_terms: list[str]) -> None:
         try:
             while current_count < switch_number:
                 # Wait until job listings are loaded
-                wait.until(EC.presence_of_all_elements_located((By.XPATH, "//li[contains(@class, 'jobs-search-results__list-item')]")))
+                print('waiting for listing')
+                wait.until(EC.presence_of_all_elements_located((By.XPATH, "//li[contains(@class, 'scaffold-layout__list-item')]")))
 
                 pagination_element, current_page = get_page_info()
 
                 # Find all job listings in current page
                 buffer(3)
-                job_listings = driver.find_elements(By.CLASS_NAME, "jobs-search-results__list-item")  
+                print('getting listings')
+                job_listings = driver.find_elements(By.CLASS_NAME, "scaffold-layout__list-item") 
+                print('got listings')
 
             
                 for job in job_listings:
@@ -780,6 +783,16 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                         description = find_by_class(driver, "jobs-box__html-content").text
                         descriptionLow = description.lower()
                         skip = False
+                        for word in good_words:
+                            if word.lower() in descriptionLow:
+                                skip=False
+                                break
+                            elif word==good_words[-1]:
+                                message = f'\n{description}\n\nContains no good word. Skipping this job!\n'
+                                reason = "Found a no good Word in About Job"
+                                skip=True
+                                break
+
                         for word in bad_words:
                             if word.lower() in descriptionLow:
                                 message = f'\n{description}\n\nContains bad word "{word}". Skipping this job!\n'
@@ -912,7 +925,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
         except Exception as e:
             print_lg("Failed to find Job listings!")
             critical_error_log("In Applier", e)
-            # print_lg(e)
+            print_lg(e)
 
         
 def run(total_runs: int) -> int:
